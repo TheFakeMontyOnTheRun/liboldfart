@@ -1,4 +1,4 @@
-package br.odb.liboldfart.wavefront_obj;
+package br.odb.liboldfart;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -6,16 +6,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 
-import br.odb.liboldfart.parser.FileFormatParser;
 import br.odb.libstrip.GeneralPolygon;
 import br.odb.libstrip.Material;
 import br.odb.libstrip.Mesh;
-import br.odb.libstrip.MeshFactory;
 import br.odb.utils.Color;
 import br.odb.utils.FileServerDelegate;
 import br.odb.utils.math.Vec3;
 
-public class WavefrontOBJLoader implements FileFormatParser {
+public class WavefrontOBJLoader {
 
 	private String buffer;
 	private ArrayList<Mesh> meshList;
@@ -31,20 +29,6 @@ public class WavefrontOBJLoader implements FileFormatParser {
 		meshList = null;
 		materialList = null;
 	}
-
-	// private void parseMaterialList(String filename) {
-	// filename = mainFilename.substring(0, mainFilename.lastIndexOf('/') + 1)
-	// + filename;
-	// System.out.println("actually reading from:" + filename);
-	// FileInputStream fis;
-	// try {
-	// fis = new FileInputStream(filename);
-	// parseMaterialList(fis);
-	// } catch (FileNotFoundException e) {
-	// // 
-	// e.printStackTrace();
-	// }
-	// }
 
 	private void parseMaterialList(InputStream fis) {
 
@@ -92,9 +76,9 @@ public class WavefrontOBJLoader implements FileFormatParser {
 							int b = (int) (255 * Float.parseFloat(getSubToken(
 									line, 3)));
 							c = new Color(r, g, b);
-							m.setMainColor(c);
+							m.mainColor.set(c);
 							System.out.println("got color " + c
-									+ " for material " + m.getName());
+									+ " for material " + m.name);
 						}
 
 					}
@@ -113,7 +97,7 @@ public class WavefrontOBJLoader implements FileFormatParser {
 			System.out.println("materials: " + materials.size());
 			for (int d = 0; d < materials.size(); ++d) {
 				System.out.println("material(" + d + "): " + materials.get(d)
-						+ " name = " + materials.get(d).getName());
+						+ " name = " + materials.get(d).name);
 			}
 			toReturn = new Material[materials.size()];
 			materials.toArray(toReturn);
@@ -122,28 +106,21 @@ public class WavefrontOBJLoader implements FileFormatParser {
 			return null;
 	}
 
-	@Override
-	public void parseDocument(FileServerDelegate fServer) {
-		loadMeshes(fServer);
-	}
-
-	private void loadMeshes(FileServerDelegate fServer) {
+	public void loadMeshes(String meshName, FileServerDelegate fServer) {
 
 		String line;
 		lastIndex = 0;
 		meshList = new ArrayList<Mesh>();
 		materialList = new ArrayList<Material>();
-		mesh = new Mesh();
+		mesh = new Mesh(meshName);
 		meshList.add(mesh);
 		currentMaterial = null;
 
 		while (buffer.length() > 0) {
 			line = buffer.substring(0, buffer.indexOf('\n'));
-			// System.out.println( "buffer:" + line );
 			buffer = buffer.substring(buffer.indexOf('\n') + 1);
 			parseLine(line, fServer);
 		}
-
 	}
 
 	static String getSubToken(String main, int token) {
@@ -170,7 +147,7 @@ public class WavefrontOBJLoader implements FileFormatParser {
 
 	private Material getMaterialByName(String name) {
 		for (int c = 0; c < materialList.size(); ++c) {
-			if (materialList.get(c).getName().equals(name))
+			if (materialList.get(c).name.equals(name))
 				return materialList.get(c);
 		}
 		return null;
@@ -191,8 +168,6 @@ public class WavefrontOBJLoader implements FileFormatParser {
 					parseMaterialList(fServer.openAsInputStream(currentPath
 							+ getSubToken(line, 1)));
 				} catch (IOException e) {
-					// TODO Irrelevant?
-					e.printStackTrace();
 				}
 
 			break;
@@ -204,10 +179,9 @@ public class WavefrontOBJLoader implements FileFormatParser {
 
 		case 'v':
 
-			v = new Vec3(
-			/* ( int ) */Float.parseFloat(getSubToken(line, 1)),
-			/* ( int ) */Float.parseFloat(getSubToken(line, 3)),
-			/* ( int ) */Float.parseFloat(getSubToken(line, 2)));
+			v = new Vec3(Float.parseFloat(getSubToken(line, 1)),
+					Float.parseFloat(getSubToken(line, 3)),
+					Float.parseFloat(getSubToken(line, 2)));
 
 			mesh.points.add(v);
 
@@ -217,8 +191,7 @@ public class WavefrontOBJLoader implements FileFormatParser {
 		case 'o':
 			System.out.println("reading " + line.substring(2));
 			lastIndex += mesh.points.size();
-			mesh = new Mesh();
-			mesh.setName(line.substring(2));
+			mesh = new Mesh(line.substring(2));
 			meshList.add(mesh);
 			break;
 		case 'f':
@@ -248,23 +221,6 @@ public class WavefrontOBJLoader implements FileFormatParser {
 		}
 	}
 
-	@Override
-	public void preBuffer(InputStream fis) {
-		preBuffer(fis, null);
-	}
-
-	// public void preBuffer(String filename) {
-	// mainFilename = filename;
-	// FileInputStream fis;
-	// try {
-	// fis = new FileInputStream(filename);
-	// preBuffer(fis, null);
-	// } catch (FileNotFoundException e) {
-	// e.printStackTrace();
-	// }
-	// }
-
-	@Override
 	public ArrayList<Mesh> getGeometry() {
 		return meshList;
 	}
@@ -288,13 +244,5 @@ public class WavefrontOBJLoader implements FileFormatParser {
 		}
 
 		buffer = mybuffer;
-	}
-
-	@Override
-	public void prepareForPath(String path, MeshFactory mesh) {
-	}
-
-	@Override
-	public void setFileServer(FileServerDelegate instance) {
 	}
 }
