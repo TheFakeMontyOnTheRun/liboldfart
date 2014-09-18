@@ -1,44 +1,37 @@
 package br.odb.liboldfart;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import br.odb.libstrip.GeneralPolygon;
 import br.odb.libstrip.Material;
 import br.odb.libstrip.Mesh;
 import br.odb.utils.Color;
-import br.odb.utils.FileServerDelegate;
 import br.odb.utils.math.Vec3;
 
 public class WavefrontOBJLoader {
 
-	private String buffer;
-	private ArrayList<Mesh> meshList;
-	private ArrayList<Material> materialList;
+	private String buffer = "";
+	final private ArrayList<Mesh> meshList = new ArrayList<Mesh>();
+	final private HashMap< String, Material> materials = new HashMap<String, Material>();
 	private Mesh mesh;
 	private int lastIndex;
 	private Material currentMaterial;
-	private InputStream materialData;
-	public String currentPath;
-
-	public WavefrontOBJLoader() {
-		buffer = "";
-		meshList = null;
-		materialList = null;
-	}
 
 	private void parseMaterialList(InputStream fis) {
 
-		Material[] materials = parseMaterials(fis);
+		Material[] list = parseMaterials(fis);
 
-		for (int c = 0; c < materials.length; ++c)
-			materialList.add(materials[c]);
+		for( Material m : list ) {
+			System.out.println( "registering material:" + m.name );
+			this.materials.put( m.name, m );
+		}
 	}
 
-	public static Material[] parseMaterials(InputStream fis) {
+	private static Material[] parseMaterials(InputStream fis) {
 
 		ArrayList<Material> materials = new ArrayList<Material>();
 		Material[] toReturn;
@@ -47,20 +40,24 @@ public class WavefrontOBJLoader {
 		String op1;
 		Material m = null;
 		Color c = null;
-
+		String[] subToken;
+		
 		try {
 
 			BufferedReader bis = new BufferedReader(new InputStreamReader(fis));
 			while (bis.ready()) {
 				try {
 					line = bis.readLine();
+					
+					subToken = line.split( "[ ]+" );
+					
 					if (line != null && line.length() > 0
 							&& line.charAt(0) != '#') {
 
-						opcode = getSubToken(line, 0);
+						opcode = subToken[ 0 ];
 
 						if (opcode.equals("newmtl")) {
-							op1 = getSubToken(line, 1);
+							op1 = subToken[ 1 ];
 							System.out
 									.println(" reading definition for material: "
 											+ op1);
@@ -69,12 +66,9 @@ public class WavefrontOBJLoader {
 						}
 
 						if (opcode.equals("Kd") && m != null) {
-							int r = (int) (255 * Float.parseFloat(getSubToken(
-									line, 1)));
-							int g = (int) (255 * Float.parseFloat(getSubToken(
-									line, 2)));
-							int b = (int) (255 * Float.parseFloat(getSubToken(
-									line, 3)));
+							int r = (int) (255 * Float.parseFloat(subToken[ 1 ]));
+							int g = (int) (255 * Float.parseFloat(subToken[ 2 ]));
+							int b = (int) (255 * Float.parseFloat(subToken[ 3 ]));
 							c = new Color(r, g, b);
 							m.mainColor.set(c);
 							System.out.println("got color " + c
@@ -106,82 +100,25 @@ public class WavefrontOBJLoader {
 			return null;
 	}
 
-	public void loadMeshes(String meshName, FileServerDelegate fServer) {
 
-		String line;
-		lastIndex = 0;
-		meshList = new ArrayList<Mesh>();
-		materialList = new ArrayList<Material>();
-		mesh = new Mesh(meshName);
-		meshList.add(mesh);
-		currentMaterial = null;
 
-		while (buffer.length() > 0) {
-			line = buffer.substring(0, buffer.indexOf('\n'));
-			buffer = buffer.substring(buffer.indexOf('\n') + 1);
-			parseLine(line, fServer);
-		}
-	}
-
-	static String getSubToken(String main, int token) {
-
-		String work = main;
-		String toreturn = null;
-		while (token > -1) {
-
-			if (token == 0) {
-				if (work.indexOf(' ') != -1)
-					toreturn = work.substring(0, work.indexOf(' '));
-				else
-					toreturn = work;
-			}
-
-			if (work.indexOf(' ') != -1)
-				work = work.substring(work.indexOf(' ') + 1);
-
-			token--;
-		}
-
-		return toreturn;
-	}
-
-	private Material getMaterialByName(String name) {
-		for (int c = 0; c < materialList.size(); ++c) {
-			if (materialList.get(c).name.equals(name))
-				return materialList.get(c);
-		}
-		return null;
-	}
-
-	private void parseLine(String line, FileServerDelegate fServer) {
+	private void parseLine(String line ) {
 		Vec3 v;
+		String[] subToken = line.split( "[ ]+" );
+		
 		switch (line.charAt(0)) {
-		case 'm':
-			System.out.println("reading materials from: "
-					+ getSubToken(line, 1));
-
-			if (materialData != null) {
-				System.out.println("reading from stream");
-				parseMaterialList(materialData);
-			} else
-				try {
-					parseMaterialList(fServer.openAsInputStream(currentPath
-							+ getSubToken(line, 1)));
-				} catch (IOException e) {
-				}
-
-			break;
 		case 'u':
-			currentMaterial = getMaterialByName(getSubToken(line, 1));
-			System.out.println("now using material: " + getSubToken(line, 1));
+			
+			currentMaterial = materials.get( subToken[ 1 ] );
+			System.out.println("now using material: " + currentMaterial.name + " for mesh " + mesh.name );
 			mesh.material = currentMaterial;
 			break;
 
 		case 'v':
 
-			v = new Vec3(Float.parseFloat(getSubToken(line, 1)),
-					Float.parseFloat(getSubToken(line, 3)),
-					Float.parseFloat(getSubToken(line, 2)));
+			v = new Vec3(Float.parseFloat( subToken[ 1 ] ),
+					Float.parseFloat( subToken[ 3 ] ),
+					Float.parseFloat( subToken[ 2 ] ) );
 
 			mesh.points.add(v);
 
@@ -221,15 +158,13 @@ public class WavefrontOBJLoader {
 		}
 	}
 
-	public ArrayList<Mesh> getGeometry() {
-		return meshList;
-	}
-
-	public void preBuffer(InputStream fis, InputStream materialData) {
+	
+	public ArrayList<Mesh> loadMeshes( String meshName, InputStream fis, InputStream materialData) {
 		buffer = " ";
 		String mybuffer = "";
 		String line;
-		this.materialData = materialData;
+		parseMaterialList(materialData);
+
 		try {
 			BufferedReader bis = new BufferedReader(new InputStreamReader(fis));
 
@@ -244,5 +179,18 @@ public class WavefrontOBJLoader {
 		}
 
 		buffer = mybuffer;
+		
+		lastIndex = 0;
+		mesh = new Mesh(meshName);
+		meshList.add(mesh);
+		currentMaterial = null;
+
+		while (buffer.length() > 0) {
+			line = buffer.substring(0, buffer.indexOf('\n'));
+			buffer = buffer.substring(buffer.indexOf('\n') + 1);
+			parseLine( line );
+		}
+		
+		return meshList;
 	}
 }
