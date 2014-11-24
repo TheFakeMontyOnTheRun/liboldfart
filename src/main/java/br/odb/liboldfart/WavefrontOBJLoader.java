@@ -61,7 +61,7 @@ public class WavefrontOBJLoader {
 							System.out
 									.println(" reading definition for material: "
 											+ op1);
-							m = new Material(op1);
+							m = new Material(op1, "", "", "" );
 							materials.add(m);
 						}
 
