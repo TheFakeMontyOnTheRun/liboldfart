@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import br.odb.libstrip.GeneralPolygon;
 import br.odb.libstrip.Material;
@@ -18,6 +19,7 @@ public class WavefrontOBJLoader {
 	final private ArrayList<Mesh> meshList = new ArrayList<Mesh>();
 	final private HashMap< String, Material> materials = new HashMap<String, Material>();
 	private Mesh mesh;
+	private List< Vec3 > vertexes = new ArrayList< Vec3 >();
 	private int lastIndex;
 	private Material currentMaterial;
 
@@ -107,6 +109,7 @@ public class WavefrontOBJLoader {
 		String[] subToken = line.split( "[ ]+" );
 		
 		switch (line.charAt(0)) {
+		
 		case 'u':
 			
 			currentMaterial = materials.get( subToken[ 1 ] );
@@ -120,17 +123,21 @@ public class WavefrontOBJLoader {
 					Float.parseFloat( subToken[ 3 ] ),
 					Float.parseFloat( subToken[ 2 ] ) );
 
-			mesh.points.add(v);
+
+			
+			vertexes.add(v);
 
 			System.out.println("v: " + v);
-
 			break;
+			
 		case 'o':
 			System.out.println("reading " + line.substring(2));
-			lastIndex += mesh.points.size();
+			lastIndex += vertexes.size();
 			mesh = new Mesh(line.substring(2));
 			meshList.add(mesh);
+			vertexes.clear();
 			break;
+			
 		case 'f':
 			String token = "";
 			String last = line.substring(1).trim();
