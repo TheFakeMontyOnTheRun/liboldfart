@@ -6,198 +6,150 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import br.odb.libstrip.GeneralPolygon;
+import br.odb.libstrip.GeneralTriangle;
 import br.odb.libstrip.Material;
-import br.odb.libstrip.Mesh;
+import br.odb.libstrip.GeneralTriangleMesh;
+import br.odb.libstrip.builders.GeneralTriangleFactory;
 import br.odb.utils.Color;
 import br.odb.utils.math.Vec3;
 
 public class WavefrontOBJLoader {
 
-	private String buffer = "";
-	final private ArrayList<Mesh> meshList = new ArrayList<Mesh>();
-	final private HashMap< String, Material> materials = new HashMap<String, Material>();
-	private Mesh mesh;
-	private List< Vec3 > vertexes = new ArrayList< Vec3 >();
-	private int lastIndex;
+	final private GeneralTriangleFactory factory;
+	final private List<GeneralTriangleMesh> meshList = new ArrayList<>();
+	final private Map<String, Material> materials = new HashMap<String, Material>();
+	final private List<Vec3> vertexes = new ArrayList<Vec3>();
+
+	private GeneralTriangleMesh currentMesh;
 	private Material currentMaterial;
 
-	private void parseMaterialList(InputStream fis) {
+	private static Material NEUTRAL_MATERIAL = new Material( null, new Color( 0xFFFFFFFF ), null, null, null );
 
-		Material[] list = parseMaterials(fis);
+	private void parseLine(String line) {
 
-		for( Material m : list ) {
-			System.out.println( "registering material:" + m.name );
-			this.materials.put( m.name, m );
+		if (line == null || line.length() == 0 || line.charAt(0) == '#') {
+			return;
+		}
+		
+		String[] subToken = line.split("[ ]+");
+
+		switch (line.charAt(0)) {
+		
+		case 'u':
+
+			if ( materials.containsKey( subToken[1] ) ) {
+				currentMaterial = materials.get(subToken[1]);
+				System.out.println("now using material: " + currentMaterial.name
+						+ " for mesh " + currentMesh.name);				
+			} else {
+				currentMaterial = NEUTRAL_MATERIAL;
+			}
+			break;
+
+		case 'v':
+			Vec3 v = new Vec3(Float.parseFloat(subToken[1]),
+					Float.parseFloat(subToken[3]),
+					Float.parseFloat(subToken[2]));
+
+			vertexes.add(v);
+
+			System.out.println("v: " + v);
+			break;
+
+		case 'o':
+			System.out.println("reading " + line.substring(2));
+			currentMesh = new GeneralTriangleMesh(line.substring(2));
+			meshList.add(currentMesh);
+			vertexes.clear();
+			break;
+
+		case 'f':
+			
+			GeneralTriangle poly = new GeneralTriangle();
+			List<Vec3> temporary = new ArrayList<>();
+			
+			for ( int c = 1; c < subToken.length; ++c ) {
+				System.out.println(":" + Integer.parseInt( subToken[ c ] ));
+				temporary.add(vertexes.get( Integer.parseInt( subToken[ c ] ) - 1 ) );
+			}
+			
+			if (temporary.size() >= 3) {
+				
+				poly = factory.makeTrig(temporary.get(0).x, temporary.get(0).y,
+						temporary.get(0).z, temporary.get(1).x,
+						temporary.get(1).y, temporary.get(1).z,
+						temporary.get(2).x, temporary.get(2).y,
+						temporary.get(2).z,
+						currentMaterial, null);
+				
+				currentMesh.faces.add(poly);
+			} 
+			
+			if (temporary.size() >= 4) {
+				
+				poly = factory.makeTrig(temporary.get(3).x, temporary.get(3).y,
+						temporary.get(3).z, temporary.get(1).x,
+						temporary.get(1).y, temporary.get(1).z,
+						temporary.get(2).x, temporary.get(2).y,
+						temporary.get(2).z,
+						currentMaterial, null);
+				
+				currentMesh.faces.add(poly);				
+			}
+
+			System.out.println("---");	
+			break;
+			
+			default:
+				return;
 		}
 	}
 
-	private static Material[] parseMaterials(InputStream fis) {
+	public WavefrontOBJLoader(GeneralTriangleFactory factory) {
+		this.factory = factory;
+	}
 
-		ArrayList<Material> materials = new ArrayList<Material>();
-		Material[] toReturn;
-		String line = "";
-		String opcode;
-		String op1;
-		Material m = null;
-		Color c = null;
-		String[] subToken;
+	public List<GeneralTriangleMesh> loadMeshes(InputStream fis, List<Material> materialList) {
 		
+		if ( materialList != null ) {
+			for ( Material m : materialList ) {
+				materials.put( m.name, m );
+			}			
+			currentMaterial = null;
+		}
+
+		currentMesh = new GeneralTriangleMesh("");
+		meshList.add(currentMesh);		
+
 		try {
-
 			BufferedReader bis = new BufferedReader(new InputStreamReader(fis));
+
 			while (bis.ready()) {
-				try {
-					line = bis.readLine();
-					
-					subToken = line.split( "[ ]+" );
-					
-					if (line != null && line.length() > 0
-							&& line.charAt(0) != '#') {
-
-						opcode = subToken[ 0 ];
-
-						if (opcode.equals("newmtl")) {
-							op1 = subToken[ 1 ];
-							System.out
-									.println(" reading definition for material: "
-											+ op1);
-							m = new Material(op1, "", "", "" );
-							materials.add(m);
-						}
-
-						if (opcode.equals("Kd") && m != null) {
-							int r = (int) (255 * Float.parseFloat(subToken[ 1 ]));
-							int g = (int) (255 * Float.parseFloat(subToken[ 2 ]));
-							int b = (int) (255 * Float.parseFloat(subToken[ 3 ]));
-							c = new Color(r, g, b);
-							m.mainColor.set(c);
-							System.out.println("got color " + c
-									+ " for material " + m.name);
-						}
-
-					}
-
-				} catch (Exception e) {
-					e.printStackTrace();
-					return null;
-				}
+				parseLine(bis.readLine());
 			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
-		if (materials.size() > 0) {
-			System.out.println("materials: " + materials.size());
-			for (int d = 0; d < materials.size(); ++d) {
-				System.out.println("material(" + d + "): " + materials.get(d)
-						+ " name = " + materials.get(d).name);
-			}
-			toReturn = new Material[materials.size()];
-			materials.toArray(toReturn);
-			return toReturn;
-		} else
-			return null;
-	}
-
-
-
-	private void parseLine(String line ) {
-		Vec3 v;
-		String[] subToken = line.split( "[ ]+" );
 		
-		switch (line.charAt(0)) {
-		
-		case 'u':
-			
-			currentMaterial = materials.get( subToken[ 1 ] );
-			System.out.println("now using material: " + currentMaterial.name + " for mesh " + mesh.name );
-			mesh.material = currentMaterial;
-			break;
+		clearEmptyMeshes( meshList );
 
-		case 'v':
-
-			v = new Vec3(Float.parseFloat( subToken[ 1 ] ),
-					Float.parseFloat( subToken[ 3 ] ),
-					Float.parseFloat( subToken[ 2 ] ) );
-
-
-			
-			vertexes.add(v);
-
-			System.out.println("v: " + v);
-			break;
-			
-		case 'o':
-			System.out.println("reading " + line.substring(2));
-			lastIndex += vertexes.size();
-			mesh = new Mesh(line.substring(2));
-			meshList.add(mesh);
-			vertexes.clear();
-			break;
-			
-		case 'f':
-			String token = "";
-			String last = line.substring(1).trim();
-			GeneralPolygon poly = new GeneralPolygon();
-
-			while (last.length() > 0) {
-
-				if (last.indexOf(' ') != -1) {
-					token = last.substring(0, last.indexOf(' ')).trim();
-					last = last.substring(last.indexOf(' ') + 1).trim();
-				} else {
-					token = last.trim();
-					last = "";
-				}
-
-				System.out.println(":" + token);
-				int integer = Integer.parseInt(token);
-				poly.addIndex(integer - lastIndex - 1);
-			}
-
-			System.out.println("---");
-			mesh.faces.add(poly);
-
-			break;
-		}
-	}
-
-	
-	public ArrayList<Mesh> loadMeshes( String meshName, InputStream fis, InputStream materialData) {
-		buffer = " ";
-		String mybuffer = "";
-		String line;
-		parseMaterialList(materialData);
-
-		try {
-			BufferedReader bis = new BufferedReader(new InputStreamReader(fis));
-
-			while (bis.ready()) {
-				line = bis.readLine();
-				if (line != null && line.length() > 0 && line.charAt(0) != '#')
-					mybuffer += line + "\n";
-			}
-
-		} catch (Exception e) {
-
-		}
-
-		buffer = mybuffer;
-		
-		lastIndex = 0;
-		mesh = new Mesh(meshName);
-		meshList.add(mesh);
-		currentMaterial = null;
-
-		while (buffer.length() > 0) {
-			line = buffer.substring(0, buffer.indexOf('\n'));
-			buffer = buffer.substring(buffer.indexOf('\n') + 1);
-			parseLine( line );
-		}
-		
 		return meshList;
+	}
+
+	private void clearEmptyMeshes(List<GeneralTriangleMesh> meshList ) {
+		List<GeneralTriangleMesh> toRemove = new ArrayList<GeneralTriangleMesh>();
+
+		for (GeneralTriangleMesh mesh : meshList) {
+			if (mesh.faces.size() == 0) {
+				toRemove.add(mesh);
+			}
+		}
+
+		for (GeneralTriangleMesh mesh : toRemove) {
+			meshList.remove(mesh);
+		}		
 	}
 }
