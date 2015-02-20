@@ -62,7 +62,6 @@ public class WavefrontOBJLoader {
 			System.out.println("reading " + line.substring(2));
 			currentMesh = new GeneralTriangleMesh(line.substring(2));
 			meshList.add(currentMesh);
-			vertexes.clear();
 			break;
 
 		case 'f':
