@@ -29,11 +29,16 @@ public class WavefrontOBJLoaderTest {
 			+ "v 4.0 5.0 6.0\n"
 			+ "v 7.0 8.0 9.0\n"
 			+ "#Faces\n"
+			+ "\n"
+			+ "h 1 2\n"
 			+ "f 1 2 3 4\n"
 			+ "f 2 3 4\n"
 			+ "f 1 2 4\n";
 	
-	String mat = "newmtl Material\n"
+	String mat = "Kd 0.640000 0.640000 0.640000\n"
+			+ "#material test\n"
+			+ "\n"
+			+ "newmtl Material\n" 
 			+ "Ns 96.078431\n"
 			+ "Ka 0.000000 0.000000 0.000000\n"
 			+ "Kd 0.640000 0.640000 0.640000\n"
@@ -48,13 +53,25 @@ public class WavefrontOBJLoaderTest {
 	 */
 	@Test
 	public void testLoadMeshes() {
-		List<Material> mats = WavefrontMaterialLoader.parseMaterials( inputStreamFromString( mat ) );
+		WavefrontMaterialLoader matLoader = new WavefrontMaterialLoader();
+		List<Material> mats = matLoader.parseMaterials( inputStreamFromString( mat ) );
 
 		WavefrontOBJLoader loader = new WavefrontOBJLoader( new GeneralTriangleFactory() );
 		List<GeneralTriangleMesh> mesh = loader.loadMeshes( inputStreamFromString( model1 ), mats );
 		
 		Assert.assertEquals( 1, mesh.size() );
-		Assert.assertEquals( "test", mesh.get( 0 ).name );		
+		Assert.assertEquals( "test", mesh.get( 0 ).name );
+
+		mesh = loader.loadMeshes( inputStreamFromString( model1 ), null );
+		
+		Assert.assertEquals( 1, mesh.size() );
+		Assert.assertEquals( "test", mesh.get( 0 ).name );
+
+		
+		mats = matLoader.parseMaterials( null );
+		mesh = loader.loadMeshes( inputStreamFromString( "" ), mats );
+		Assert.assertEquals( 0, mesh.size() );
+
 	}
 	
 	@Test
@@ -64,12 +81,17 @@ public class WavefrontOBJLoaderTest {
 		
 		Assert.assertEquals( 1, mesh.size() );
 		Assert.assertEquals( "test", mesh.get( 0 ).name );
+		
+		mesh = loader.loadMeshes( null, null );
+		
+		Assert.assertEquals( 0, mesh.size() );
 	}
 	
 	
 	@Test
 	public void testMaterialParsing() {
-		List<Material> mats = WavefrontMaterialLoader.parseMaterials( inputStreamFromString( mat ) );
+		WavefrontMaterialLoader loader = new WavefrontMaterialLoader();
+		List<Material> mats = loader.parseMaterials( inputStreamFromString( mat ) );
 		Assert.assertEquals( "Material", mats.get( 0 ).name );
 	}
 

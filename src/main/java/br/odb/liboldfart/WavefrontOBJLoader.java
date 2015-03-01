@@ -74,7 +74,7 @@ public class WavefrontOBJLoader {
 				temporary.add(vertexes.get( Integer.parseInt( subToken[ c ] ) - 1 ) );
 			}
 			
-			if (temporary.size() >= 3) {
+			if (temporary.size() == 3) {
 				
 				poly = factory.makeTrig(temporary.get(0).x, temporary.get(0).y,
 						temporary.get(0).z, temporary.get(1).x,
@@ -110,8 +110,15 @@ public class WavefrontOBJLoader {
 		this.factory = factory;
 	}
 
+	public void resetLoader() {
+		materials.clear();
+		meshList.clear();
+	}
+	
 	public List<GeneralTriangleMesh> loadMeshes(InputStream fis, List<Material> materialList) {
 		
+		resetLoader();
+
 		if ( materialList != null ) {
 			for ( Material m : materialList ) {
 				materials.put( m.name, m );
@@ -130,7 +137,6 @@ public class WavefrontOBJLoader {
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
 		}
 		
 		clearEmptyMeshes( meshList );
