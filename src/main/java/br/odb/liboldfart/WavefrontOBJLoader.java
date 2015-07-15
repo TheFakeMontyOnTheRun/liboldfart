@@ -25,7 +25,7 @@ public class WavefrontOBJLoader {
 	private GeneralTriangleMesh currentMesh;
 	private Material currentMaterial;
 
-	private static Material NEUTRAL_MATERIAL = new Material( null, new Color( 0xFFFFFFFF ), null, null, null );
+	private static Material NEUTRAL_MATERIAL = new Material( null, new Color( 0xFFFFFFFF ), null, null );
 
 	private void parseLine(String line) {
 

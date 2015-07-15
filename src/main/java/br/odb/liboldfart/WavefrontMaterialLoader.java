@@ -32,7 +32,7 @@ public class WavefrontMaterialLoader {
 		if ("newmtl".equals(opcode)) {
 			op1 = subToken[1];
 			System.out.println(" reading definition for material: " + op1);
-			currentMaterial = new Material(op1, null, null, null, null);
+			currentMaterial = new Material(op1, null, null, null);
 			materials.add(currentMaterial);
 		}
 
