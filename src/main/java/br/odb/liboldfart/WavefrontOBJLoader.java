@@ -10,7 +10,7 @@ import java.util.Map;
 
 import br.odb.libstrip.GeneralTriangle;
 import br.odb.libstrip.Material;
-import br.odb.libstrip.GeneralTriangleMesh;
+import br.odb.libstrip.TriangleMesh;
 import br.odb.libstrip.builders.GeneralTriangleFactory;
 import br.odb.utils.Color;
 import br.odb.utils.math.Vec3;
@@ -18,11 +18,11 @@ import br.odb.utils.math.Vec3;
 public class WavefrontOBJLoader {
 
 	final private GeneralTriangleFactory factory;
-	final private List<GeneralTriangleMesh> meshList = new ArrayList<>();
+	final private List<TriangleMesh> meshList = new ArrayList<>();
 	final private Map<String, Material> materials = new HashMap<String, Material>();
 	final private List<Vec3> vertexes = new ArrayList<Vec3>();
 
-	private GeneralTriangleMesh currentMesh;
+	private TriangleMesh currentMesh;
 	private Material currentMaterial;
 
 	private static Material NEUTRAL_MATERIAL = new Material( null, new Color( 0xFFFFFFFF ), null, null );
@@ -60,7 +60,7 @@ public class WavefrontOBJLoader {
 
 		case 'o':
 			System.out.println("reading " + line.substring(2));
-			currentMesh = new GeneralTriangleMesh(line.substring(2));
+			currentMesh = new TriangleMesh(line.substring(2));
 			meshList.add(currentMesh);
 			break;
 
@@ -115,7 +115,7 @@ public class WavefrontOBJLoader {
 		meshList.clear();
 	}
 	
-	public List<GeneralTriangleMesh> loadMeshes(InputStream fis, List<Material> materialList) {
+	public List<TriangleMesh> loadMeshes(InputStream fis, List<Material> materialList) {
 		
 		resetLoader();
 
@@ -126,7 +126,7 @@ public class WavefrontOBJLoader {
 			currentMaterial = null;
 		}
 
-		currentMesh = new GeneralTriangleMesh("");
+		currentMesh = new TriangleMesh("");
 		meshList.add(currentMesh);		
 
 		try {
@@ -144,16 +144,16 @@ public class WavefrontOBJLoader {
 		return meshList;
 	}
 
-	private void clearEmptyMeshes(List<GeneralTriangleMesh> meshList ) {
-		List<GeneralTriangleMesh> toRemove = new ArrayList<GeneralTriangleMesh>();
+	private void clearEmptyMeshes(List<TriangleMesh> meshList ) {
+		List<TriangleMesh> toRemove = new ArrayList<TriangleMesh>();
 
-		for (GeneralTriangleMesh mesh : meshList) {
+		for (TriangleMesh mesh : meshList) {
 			if (mesh.faces.size() == 0) {
 				toRemove.add(mesh);
 			}
 		}
 
-		for (GeneralTriangleMesh mesh : toRemove) {
+		for (TriangleMesh mesh : toRemove) {
 			meshList.remove(mesh);
 		}		
 	}

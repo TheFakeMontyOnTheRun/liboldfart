@@ -11,7 +11,7 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import br.odb.libstrip.GeneralTriangleMesh;
+import br.odb.libstrip.TriangleMesh;
 import br.odb.libstrip.Material;
 import br.odb.libstrip.builders.GeneralTriangleFactory;
 
@@ -57,7 +57,7 @@ public class WavefrontOBJLoaderTest {
 		List<Material> mats = matLoader.parseMaterials( inputStreamFromString( mat ) );
 
 		WavefrontOBJLoader loader = new WavefrontOBJLoader( new GeneralTriangleFactory() );
-		List<GeneralTriangleMesh> mesh = loader.loadMeshes( inputStreamFromString( model1 ), mats );
+		List<TriangleMesh> mesh = loader.loadMeshes( inputStreamFromString( model1 ), mats );
 		
 		Assert.assertEquals( 1, mesh.size() );
 		Assert.assertEquals( "test", mesh.get( 0 ).name );
@@ -77,7 +77,7 @@ public class WavefrontOBJLoaderTest {
 	@Test
 	public void testNullMaterial() {
 		WavefrontOBJLoader loader = new WavefrontOBJLoader( new GeneralTriangleFactory() );
-		List<GeneralTriangleMesh> mesh = loader.loadMeshes( inputStreamFromString( model1 ), null );
+		List<TriangleMesh> mesh = loader.loadMeshes( inputStreamFromString( model1 ), null );
 		
 		Assert.assertEquals( 1, mesh.size() );
 		Assert.assertEquals( "test", mesh.get( 0 ).name );
