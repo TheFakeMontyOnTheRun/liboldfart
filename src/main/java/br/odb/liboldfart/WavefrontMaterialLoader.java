@@ -1,27 +1,25 @@
 package br.odb.liboldfart;
 
-import java.io.BufferedReader;
+import br.odb.gameutils.Color;
+
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-
-import br.odb.libstrip.Material;
-import br.odb.utils.Color;
+import java.util.Scanner;
 
 public class WavefrontMaterialLoader {
 
-	public void parseLine(String line) {
+	private static final String NEW_MATERIAL_COMMAND = "newmtl";
+	private static final String DIFFUSE_COLOR_COMMAND = "Kd";
+	private static final char COMMENT_COMMAND = '#';
+	private static final String TEXTURE_MAP_COMMAND = "map_Kd";
 
-		Color c = null;
+	private void parseLine(String line) {
+
 		String[] subToken;
-
-		
-
 		String opcode;
-		String op1;
 
-		if (line == null || line.length() == 0 || line.charAt(0) == '#') {
+		if (!isLineRelevant(line)) {
 			return;
 		}
 
@@ -29,44 +27,46 @@ public class WavefrontMaterialLoader {
 
 		opcode = subToken[0];
 
-		if ("newmtl".equals(opcode)) {
-			op1 = subToken[1];
-			System.out.println(" reading definition for material: " + op1);
-			currentMaterial = new Material(op1, null, null, null);
+		if (NEW_MATERIAL_COMMAND.equals(opcode)) {
+			String op1 = subToken[1];
+			currentMaterial = new WavefrontMaterial(op1);
 			materials.add(currentMaterial);
 		}
 
-		if ("Kd".equals(opcode) && currentMaterial != null) {
-			int r = (int) (255 * Float.parseFloat(subToken[1]));
-			int g = (int) (255 * Float.parseFloat(subToken[2]));
-			int b = (int) (255 * Float.parseFloat(subToken[3]));
-			c = new Color(r, g, b);
-			currentMaterial.mainColor.set(c);
+		if (DIFFUSE_COLOR_COMMAND.equals(opcode) && currentMaterial != null) {
+			int r = parseIn255Range(subToken[1]);
+			int g = parseIn255Range(subToken[2]);
+			int b = parseIn255Range(subToken[3]);
+			currentMaterial.addColor( new Color(r, g, b) );
+		}
 
-			System.out.println("got color " + c + " for material " + currentMaterial.name);
+		if (TEXTURE_MAP_COMMAND.equals(opcode) && currentMaterial != null) {
+			currentMaterial.addTexture( subToken[1] );
 		}
 
 	}
 
-	Material currentMaterial = null;
-	private final List<Material> materials = new ArrayList<Material>();
+	private boolean isLineRelevant(String line) {
+		return line != null && line.length() > 0 && line.charAt(0) != COMMENT_COMMAND;
+	}
 
-	public List<Material> parseMaterials(InputStream fis) {
+	private int parseIn255Range(String s) {
+		return (int) (255 * Float.parseFloat(s));
+	}
 
-		try {
+	public List<WavefrontMaterial> parseMaterials(InputStream is) {
 
-			BufferedReader bis = new BufferedReader(new InputStreamReader(fis));
-			while (bis.ready()) {
-				parseLine(bis.readLine());
+		if ( is != null ) {
+			Scanner in = new Scanner( is );
+
+			while (in.hasNextLine()) {
+				parseLine(in.nextLine());
 			}
-
-		} catch (Exception e) {
-		}
-
-		for (Material mat : materials) {
-			System.out.println(": " + mat);
 		}
 
 		return materials;
 	}
+
+	private WavefrontMaterial currentMaterial = null;
+	private final List<WavefrontMaterial> materials = new ArrayList<>();
 }
