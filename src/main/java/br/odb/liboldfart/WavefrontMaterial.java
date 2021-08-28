@@ -6,7 +6,7 @@ import br.odb.libstrip.Material;
 /**
  * Created by monty on 12/03/16.
  */
-class WavefrontMaterial {
+public class WavefrontMaterial {
 
 	Material material;
 	public final String name;

@@ -1,7 +1,9 @@
 package br.odb.liboldfart;
 
 import br.odb.gameutils.Color;
+import br.odb.gameutils.math.Vec2;
 import br.odb.gameutils.math.Vec3;
+import br.odb.libstrip.GeneralTriangle;
 import br.odb.libstrip.Material;
 import br.odb.libstrip.TriangleMesh;
 import br.odb.libstrip.builders.GeneralTriangleFactory;
@@ -13,6 +15,7 @@ public class SimpleWavefrontOBJLoader {
 
 	private static final String USE_MATERIAL_COMMAND = "usemtl";
 	private static final String NEW_VERTEX_COMMAND = "v";
+	private static final String NEW_UVCOORD_COMMAND = "vt";
 	private static final String NEW_OBJECT_COMMAND = "o";
 	private static final String NEW_FACE_COMMAND = "f";
 	private static final char COMMENT_COMMAND = '#';
@@ -45,6 +48,15 @@ public class SimpleWavefrontOBJLoader {
 			}
 		});
 
+		processorMap.put(NEW_UVCOORD_COMMAND, new WavefrontCommandProcessor() {
+			@Override
+			public void run(String[] subToken) {
+				Vec2 v = new Vec2(Float.parseFloat(subToken[1]),
+						Float.parseFloat(subToken[2]));
+				uvCoords.add(v);
+			}
+		});
+
 		processorMap.put(NEW_OBJECT_COMMAND, new WavefrontCommandProcessor() {
 			@Override
 			public void run(String[] tokens) {
@@ -58,17 +70,48 @@ public class SimpleWavefrontOBJLoader {
 			public void run(String[] subToken) {
 
 				List<Vec3> temporary = new ArrayList<>();
+				List<Vec2> temporaryUV = new ArrayList<>();
 
 				for (int c = 1; c < subToken.length; ++c) {
-					temporary.add(vertexes.get(Integer.parseInt(subToken[c]) - 1));
+					String substr = subToken[c];
+
+					if (substr.contains("/")) {
+						substr = substr.substring(0, substr.indexOf('/'));
+					}
+
+					temporary.add(vertexes.get(Integer.parseInt(substr) - 1));
+
+					substr = subToken[c];
+
+					if (substr.contains("/")) {
+						substr = substr.substring(substr.indexOf('/') + 1);
+					} else {
+						continue;
+					}
+
+					if (substr.contains("/")) {
+						substr = substr.substring(0, substr.indexOf('/'));
+					}
+
+					temporaryUV.add(uvCoords.get(Integer.parseInt(substr) - 1));
 				}
 
-				currentMesh.faces.add(factory.makeTrig(temporary.get(0).x, temporary.get(0).y,
-						temporary.get(0).z, temporary.get(1).x,
-						temporary.get(1).y, temporary.get(1).z,
-						temporary.get(2).x, temporary.get(2).y,
-						temporary.get(2).z,
-						currentMaterial));
+				GeneralTriangle triangle = factory.makeTrig(
+						temporary.get(0).x, temporary.get(0).y, temporary.get(0).z,
+						temporary.get(1).x, temporary.get(1).y, temporary.get(1).z,
+						temporary.get(2).x, temporary.get(2).y, temporary.get(2).z,
+						currentMaterial);
+
+				float[] uv = new float[6];
+				int i = 0;
+				for (Vec2 v: temporaryUV) {
+					uv[i++] = v.x;
+					uv[i++] = v.y;
+				}
+
+				triangle.setTextureCoordinates(uv);
+
+				currentMesh.faces.add(triangle);
 			}
 		});
 	}
@@ -138,6 +181,7 @@ public class SimpleWavefrontOBJLoader {
 	final private List<TriangleMesh> meshList = new ArrayList<>();
 	final private Map<String, Material> materials = new HashMap<>();
 	final private List<Vec3> vertexes = new ArrayList<>();
+	final private List<Vec2> uvCoords = new ArrayList<>();
 	private TriangleMesh currentMesh;
 	private Material currentMaterial;
 	private final Map<String, WavefrontCommandProcessor> processorMap = new HashMap<>();
